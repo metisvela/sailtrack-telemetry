@@ -25,5 +25,75 @@ The system is designed to:
 
 The SailTrack Telemetry System is based on 3 ESP32 based parts. These nodes are connected to each other via a CAN BUS:
 * [Sensor Node](https://github.com/metisvela/sailtrack-telemetry/blob/main/src/SensorNode.cpp): The main node with the IMU and GPS sensors connected to.
-* [RadioHead](https://github.com/metisvela/sailtrack-telemetry/blob/main/src/RadioHead.cpp): The node to send data from the boat to our system on our dinghy.
+* [RadioHead](https://github.com/metisvela/sailtrack-telemetry/blob/main/src/RadioHead.cpp): The node to send data from the boat to our system on the dinghy.
 * [Display Node](https://github.com/metisvela/sailtrack-telemetry/blob/main/src/display.cpp): The node to display the data for the sailors on board.
+
+---
+
+## Pinout Configuration
+
+Below is the pin allocation for the spesific nodes. For more information, the pins are also allocated on the respected node's .cpp file: 
+
+### Display Node
+| Component | Pin Name | ESP32 GPIO | Description |
+| :--- | :--- | :--- | :--- |
+| **7.5" E-Paper Display** | `EPD_CS` | **GPIO 2** | SPI Chip Select |
+| | `EPD_DC` | **GPIO 4** | Data / Command Control |
+| | `EPD_RST` | **GPIO 16** | Hardware Reset |
+| | `EPD_BUSY` | **GPIO 5** | Busy Signal Indicator |
+| | `EPD_PWR` | **GPIO 17** | Display Power Rail Gate Control |
+| | `EPD_SCK` | **GPIO 18** | SPI Clock |
+| | `EPD_MOSI` | **GPIO 15** | SPI Master Out Slave In |
+| **CAN Bus Transceiver** | `CAN_RX_PIN`| **GPIO 22** | CAN Receive Line |
+| | `CAN_TX_PIN`| **GPIO 23** | CAN Transmit Line |
+| **System Control** | `SLEEP_BUTTON`| **GPIO 27** | Sleep Mode Input Button |
+
+### RadioHead
+| Component | Pin Name | ESP32 GPIO | Description |
+| :--- | :--- | :--- | :--- |
+| **E32 868T20D LoRa Radio Module** | `RX` | **GPIO 16** | Radio Receive Line |
+| | `TX` | **GPIO 17** | Radio Transmit Line |
+| | `VCC` | **5V** | Power For The Module |
+| | `GND` | **GND** | Ground For The Module |
+| | `M0` | **GND** | Mode Selection(Same ground as the module's ground) |
+| | `M1` | **GND** | Mode Selection(Same ground as the module's ground) |
+| **CAN Bus Transceiver** | `CAN_RX_PIN`| **GPIO 25** | CAN Receive Line |
+| | `CAN_TX_PIN`| **GPIO 26** | CAN Transmit Line |
+
+### Sensor Node
+| Component | Pin Name | ESP32 GPIO | Description |
+| :--- | :--- | :--- | :--- |
+| **7.5" E-Paper Display** | `EPD_CS` | **GPIO 2** | SPI Chip Select |
+| | `EPD_DC` | **GPIO 4** | Data / Command Control |
+| | `EPD_RST` | **GPIO 16** | Hardware Reset |
+| | `EPD_BUSY` | **GPIO 5** | Busy Signal Indicator |
+| | `EPD_PWR` | **GPIO 17** | Display Power Rail Gate Control |
+| | `EPD_SCK` | **GPIO 18** | SPI Clock |
+| | `EPD_MOSI` | **GPIO 15** | SPI Master Out Slave In |
+| **CAN Bus Transceiver** | `CAN_RX_PIN`| **GPIO 22** | CAN Receive Line |
+| | `CAN_TX_PIN`| **GPIO 23** | CAN Transmit Line |
+| **System Control** | `SLEEP_BUTTON`| **GPIO 27** | Sleep Mode Input Button |
+---
+
+## Data Protocol
+
+Data is sent across the CAN Bus using small, optimized binary structures defined in `Protocol.h` to minimize latency.
+
+### CAN Message IDs
+* `0x101` (`ID_IMU_X`): Roll Vector
+* `0x102` (`ID_IMU_Y`): Pitch Vector
+* `0x103` (`ID_IMU_Z`): Yaw Vector
+* `0x201` (`ID_GPS_MOTION`): Speed Over Ground (SOG)
+
+### Struct Examples
+```cpp
+struct __attribute__((packed)) CAN_IMU_Frame {
+    float v1; // Angle in degrees
+    float v2; // Acceleration
+    float v3; // Gyro
+};
+
+struct __attribute__((packed)) CAN_GPS_MOTION {
+    float knots;  // Speed Over Ground
+    float course; // Course Over Ground
+};

@@ -93,3 +93,15 @@ struct __attribute__((packed)) CAN_GPS_MOTION {
     float knots;  // Speed Over Ground
     float headMot; // Headding
 };
+
+## Contributing
+
+Contributors are welcome. If you are a student of the University of Padova, please apply for the Metis Sailing Team via our [official website](http://metisvela.dii.unipd.it), specifying in the application form that you are interested in contributing to the SailTrack Project. 
+
+If you are not a student of the University of Padova, feel free to open Pull Requests and Issues directly within this repository to contribute to the telemetry system development.
+
+---
+
+## License
+
+Copyright © 2026, [Metis Sailing Team](https://github.com/metisvela). SailTrack Telemetry is available under the [GPL-3.0 license](https://www.gnu.org/licenses/gpl-3.0.en.html).

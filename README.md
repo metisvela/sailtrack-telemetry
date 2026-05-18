@@ -53,8 +53,6 @@ Below is the pin allocation for the spesific nodes. For more information, the pi
 | :--- | :--- | :--- | :--- |
 | **E32 868T20D LoRa Radio Module** | `RX` | **GPIO 16** | Radio Receive Line |
 | | `TX` | **GPIO 17** | Radio Transmit Line |
-| | `VCC` | **5V** | Power For The Module |
-| | `GND` | **GND** | Ground For The Module |
 | | `M0` | **GND** | Mode Selection(Same ground as the module's ground) |
 | | `M1` | **GND** | Mode Selection(Same ground as the module's ground) |
 | **CAN Bus Transceiver** | `CAN_RX_PIN`| **GPIO 25** | CAN Receive Line |
@@ -63,16 +61,13 @@ Below is the pin allocation for the spesific nodes. For more information, the pi
 ### Sensor Node
 | Component | Pin Name | ESP32 GPIO | Description |
 | :--- | :--- | :--- | :--- |
-| **7.5" E-Paper Display** | `EPD_CS` | **GPIO 2** | SPI Chip Select |
-| | `EPD_DC` | **GPIO 4** | Data / Command Control |
-| | `EPD_RST` | **GPIO 16** | Hardware Reset |
-| | `EPD_BUSY` | **GPIO 5** | Busy Signal Indicator |
-| | `EPD_PWR` | **GPIO 17** | Display Power Rail Gate Control |
-| | `EPD_SCK` | **GPIO 18** | SPI Clock |
-| | `EPD_MOSI` | **GPIO 15** | SPI Master Out Slave In |
+| **IMU**  | `SCL` | **GPIO 25** | I2C SCL Pin |
+| | `SDA` | **GPIO 27** | I2C SDA Pin |
+| **GPS** | `TX` | **GPIO RX** | Data Transmit Line |
+| | `RX` | **GPIO TX** | Data Receive Line |
 | **CAN Bus Transceiver** | `CAN_RX_PIN`| **GPIO 22** | CAN Receive Line |
 | | `CAN_TX_PIN`| **GPIO 23** | CAN Transmit Line |
-| **System Control** | `SLEEP_BUTTON`| **GPIO 27** | Sleep Mode Input Button |
+
 ---
 
 ## Data Protocol
@@ -83,17 +78,18 @@ Data is sent across the CAN Bus using small, optimized binary structures defined
 * `0x101` (`ID_IMU_X`): Roll Vector
 * `0x102` (`ID_IMU_Y`): Pitch Vector
 * `0x103` (`ID_IMU_Z`): Yaw Vector
-* `0x201` (`ID_GPS_MOTION`): Speed Over Ground (SOG)
+* `0x201` (`ID_GPS_POS`): LAT and LNG coordinates
+* `0x202` (`ID_GPS_MOT`): Headding and SOG
+* `0x203` (`ID_GPS_INFO`): Epoch and Time
 
 ### Struct Examples
 ```cpp
 struct __attribute__((packed)) CAN_IMU_Frame {
     float v1; // Angle in degrees
     float v2; // Acceleration
-    float v3; // Gyro
 };
 
 struct __attribute__((packed)) CAN_GPS_MOTION {
     float knots;  // Speed Over Ground
-    float course; // Course Over Ground
+    float headMot; // Headding
 };

@@ -93,7 +93,8 @@ struct __attribute__((packed)) CAN_GPS_MOTION {
     float knots;  // Speed Over Ground
     float headMot; // Headding
 };
-
+```
+--- 
 ## Contributing
 
 Contributors are welcome. If you are a student of the University of Padova, please apply for the Metis Sailing Team via our [official website](http://metisvela.dii.unipd.it), specifying in the application form that you are interested in contributing to the SailTrack Project. 

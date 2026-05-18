@@ -21,6 +21,9 @@ The system is designed to:
 
 ---
 
-## Hardware Architecture
+## Main Nodes
 
-The system uses a distributed architecture with two ESP32 microcontrollers communicating over a reliable physical CAN Bus line.
+The SailTrack Telemetry System is based on 3 ESP32 based parts. These nodes are connected to each other via a CAN BUS:
+* [Sensor Node](https://github.com/metisvela/sailtrack-telemetry/blob/main/src/SensorNode.cpp): The main node with the IMU and GPS sensors connected to.
+* [RadioHead](https://github.com/metisvela/sailtrack-telemetry/blob/main/src/RadioHead.cpp): The node to send data from the boat to our system on our dinghy.
+* [Display Node](https://github.com/metisvela/sailtrack-telemetry/blob/main/src/display.cpp): The node to display the data for the sailors on board.

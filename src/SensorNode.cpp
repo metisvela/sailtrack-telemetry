@@ -4,73 +4,47 @@
 #include <Adafruit_LSM9DS1.h>
 #include <Adafruit_AHRS.h>
 #include <Adafruit_Sensor_Calibration.h>
-#include <CAN.h>
 #include <TinyGPS++.h>
 #include <esp_task_wdt.h> 
-#include "Protocol.h"
+#include <SD.h>
+#include <FS.h>
+
+#define SD_CS_PIN 21
+
+bool sdFound = false;
+String logFileName = "/temp_flight.csv"; // Temporary name to catch early data
+bool isFileRenamed = false;              // Tracks if GPS has locked and renamed the file
+
+// --- E32 Radio Configuration ---
+#define RXD2 12
+#define TXD2 13
+#define RADIO_BAUD 9600
 
 // --- Configuration ---
 #define LED_PIN 2 
 #define I2C_SDA_PIN 27
 #define I2C_SCL_PIN 25
 #define GPS_BAUD 9600
-#define RECOVERY_INTERVAL 10000 // 10 seconds
+#define RECOVERY_INTERVAL 500 // 0.5 seconds
 
 // --- Global Objects ---
 TinyGPSPlus gps;
-HardwareSerial SerialGPS(2);
+HardwareSerial SerialGPS(1);
 Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
 Adafruit_NXPSensorFusion filter;
 Adafruit_Sensor_Calibration_EEPROM cal;
 
 // --- State Variables ---
 bool imuFound = false;
-bool canFound = false;
 bool gpsFound = false;
 unsigned long lastHeartbeat = 0;
 bool ledState = LOW;
 unsigned long lastSendTime = 0;
-const unsigned long sendInterval = 500;
+const unsigned long sendInterval = 1000;
 unsigned long lastRecoveryAttempt = 0;
 
 float linearAccelX, linearAccelY, linearAccelZ;
 
-// --- CAN Sending Functions ---
-void Send_CAN_IMU(uint32_t ID, float v1, float v2) {
-    if (!canFound) return;
-    CAN_IMU_Frame msg = {v1, v2};
-    CAN.beginPacket(ID);
-    CAN.write((uint8_t *)&msg, sizeof(msg));
-    CAN.endPacket();
-    Serial.printf("Imu data sent with data: %f | %f\n",v1,v2);
-}
-
-void Send_CAN_GPS_POS(uint32_t ID, int32_t v1, int32_t v2) {
-    if (!canFound) return;
-    CAN_GPS_POS msg = {v1, v2};
-    CAN.beginPacket(ID);
-    CAN.write((uint8_t *)&msg, sizeof(msg));
-    CAN.endPacket();
-    Serial.printf("gps pos data sent with data: %d | %d\n",v1,v2);
-}
-
-void Send_CAN_GPS_MOT(uint32_t ID, float v1, float v2) {
-    if (!canFound) return;
-    CAN_GPS_MOTION msg = {v1, v2};
-    CAN.beginPacket(ID);
-    CAN.write((uint8_t *)&msg, sizeof(msg));
-    CAN.endPacket();
-    Serial.printf("gps mot data sent with data: %f | %f\n",v1,v2);
-}
-
-void Send_CAN_GPS_INFO(uint32_t ID, uint32_t v1, uint8_t v2) {
-    if (!canFound) return;
-    CAN_GPS_INFO msg = {v1, v2};
-    CAN.beginPacket(ID);
-    CAN.write((uint8_t *)&msg, sizeof(msg));
-    CAN.endPacket();
-    Serial.printf("gps info data sent with data: %d | %d\n",v1,v2);
-}
 
 // --- Recovery Logic ---
 void attemptModuleRecovery() {
@@ -91,25 +65,24 @@ void attemptModuleRecovery() {
         }
     }
 
-    if (!canFound) {
-        Serial.println("[RECOVERY] Trying CAN...");
-        CAN.end();
-        if (CAN.begin(500E3)) {
-            canFound = true;
-            Serial.println("[RECOVERY] CAN Success!");
-        }
-    }
-
     if (!gpsFound) {
         if (SerialGPS.available() > 0) {
             gpsFound = true;
             Serial.println("[RECOVERY] GPS Success!");
         }
     }
+
+    if (!sdFound) {
+        if (SD.begin(SD_CS_PIN)) {
+            sdFound = true;
+            Serial.println("[RECOVERY] SD Card Success!");
+        }
+    }
 }
 
 void setup() {
     Serial.begin(115200);
+    Serial2.begin(RADIO_BAUD, SERIAL_8N1, RXD2, TXD2);
     pinMode(LED_PIN, OUTPUT);
 
     // Classic Watchdog Setup (for recovery)
@@ -131,17 +104,27 @@ void setup() {
         Serial.println("OK");
     } else { Serial.println("FAIL"); }
 
-    Serial.print("CAN Init... ");
-    if (CAN.begin(500E3)) {
-        canFound = true;
-        Serial.println("OK");
-    } else { Serial.println("FAIL"); }
-
     cal.begin();
     cal.loadCalibration();
     filter.begin(10); // 10Hz filter
 
-    SerialGPS.begin(GPS_BAUD, SERIAL_8N1, 16, 17);
+    SerialGPS.begin(GPS_BAUD, SERIAL_8N1, 4, 5);
+
+    // SD Card Setup
+    Serial.print("SD Card Init... ");
+    if (SD.begin(SD_CS_PIN)) {
+        sdFound = true;
+        Serial.println("OK");
+        
+        // Create CSV Header if the temporary file is new
+        File file = SD.open(logFileName, FILE_APPEND);
+        if (file && file.size() == 0) {
+            file.println("TimeMs,Roll,Pitch,Yaw,AccX,AccY,AccZ,Lat,Lng,Knots,Course,Sats,GPSTime");
+        }
+        if (file) file.close();
+    } else { 
+        Serial.println("FAIL - Running without local logging"); 
+    }
     
     // Boot Indicator
     for(int i=0; i<3; i++) {
@@ -187,28 +170,79 @@ void loop() {
     }
 
     // Send Data
-    if (millis() - lastSendTime >= sendInterval) {
+    // Send Data (Restored to the original CAN-style batch timing)
+    if (millis() - lastSendTime >= sendInterval) { // sendInterval is 500
         lastSendTime = millis();
 
-        if (canFound) {
-            if (imuFound) {
-                Send_CAN_IMU(ID_IMU_X, filter.getRoll(), linearAccelX);
-                delayMicroseconds(500);
-                Send_CAN_IMU(ID_IMU_Y, filter.getPitch(), linearAccelY);
-                delayMicroseconds(500);
-                Send_CAN_IMU(ID_IMU_Z, filter.getYaw(), linearAccelZ);
-                delayMicroseconds(500);
+        if (imuFound) {
+            // Replicates Send_CAN_IMU with 500us gaps
+            Serial2.printf("IMU_X,%.2f,%.2f\n", filter.getRoll(), linearAccelX);
+            Serial.printf("IMU_X,%.2f,%.2f\n", filter.getRoll(), linearAccelX);
+            delayMicroseconds(500);
+
+            Serial2.printf("IMU_Y,%.2f,%.2f\n", filter.getPitch(), linearAccelY);
+            Serial.printf("IMU_Y,%.2f,%.2f\n", filter.getPitch(), linearAccelY);
+            delayMicroseconds(500);
+
+            Serial2.printf("IMU_Z,%.2f,%.2f\n", filter.getYaw(), linearAccelZ);
+            Serial.printf("IMU_Z,%.2f,%.2f\n", filter.getYaw(), linearAccelZ);
+            delayMicroseconds(500);
+        }
+
+        if (gpsFound) {
+            // Replicates Send_CAN_GPS with 500us gaps
+            Serial2.printf("GPS_POS,%.6f,%.6f\n", gps.location.lat(), gps.location.lng());
+            Serial.printf("GPS_POS,%.6f,%.6f\n", gps.location.lat(), gps.location.lng());
+            delayMicroseconds(500);
+
+            Serial2.printf("GPS_MOT,%.2f,%.2f\n", gps.speed.knots(), gps.course.deg());
+            Serial.printf("GPS_MOT,%.2f,%.2f\n", gps.speed.knots(), gps.course.deg());
+            delayMicroseconds(500);
+
+            Serial2.printf("GPS_INFO,%d,%d\n", gps.satellites.value(), gps.time.value());
+            Serial.printf("GPS_INFO,%d,%d\n", gps.satellites.value(), gps.time.value());
+        }
+
+        // --- 2. SD Card CSV Logging (With on-the-fly Renaming) ---
+        if (sdFound) {
+            
+            // STEP A: Rename the file the moment GPS time becomes valid
+            if (!isFileRenamed && gps.date.isValid() && gps.time.isValid() && gps.date.year() > 2000) {
+                char newName[32];
+                // Formats name as: /YYYYMMDD_HHMM.csv
+                sprintf(newName, "/%04d%02d%02d_%02d%02d.csv", 
+                        gps.date.year(), gps.date.month(), gps.date.day(), 
+                        gps.time.hour(), gps.time.minute());
+                
+                // Physically rename the file on the SD Card
+                if (SD.rename(logFileName, newName)) {
+                    logFileName = String(newName); // Update the variable to the new path
+                    isFileRenamed = true;          // Stop checking
+                    Serial.println(">>> SD Log Renamed to: " + logFileName);
+                }
             }
 
-            if (gpsFound) {
-                int32_t latFixed = (int32_t)(gps.location.lat() * 1000000);
-                int32_t lngFixed = (int32_t)(gps.location.lng() * 1000000);
-                
-                Send_CAN_GPS_POS(ID_GPS_POS, latFixed, lngFixed);
-                delayMicroseconds(500);
-                Send_CAN_GPS_MOT(ID_GPS_MOTION, gps.speed.knots(), gps.course.deg());
-                delayMicroseconds(500);
-                Send_CAN_GPS_INFO(ID_GPS_INFO, gps.time.value(), (uint8_t)gps.satellites.value());
+            // STEP B: Write the data to whatever the current filename is
+            File file = SD.open(logFileName, FILE_APPEND);
+            if (file) {
+                file.printf("%lu,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.6f,%.6f,%.2f,%.2f,%d,%d\n",
+                    millis(),
+                    imuFound ? filter.getRoll() : 0.0,
+                    imuFound ? filter.getPitch() : 0.0,
+                    imuFound ? filter.getYaw() : 0.0,
+                    imuFound ? linearAccelX : 0.0,
+                    imuFound ? linearAccelY : 0.0,
+                    imuFound ? linearAccelZ : 0.0,
+                    gpsFound ? gps.location.lat() : 0.0,
+                    gpsFound ? gps.location.lng() : 0.0,
+                    gpsFound ? gps.speed.knots() : 0.0,
+                    gpsFound ? gps.course.deg() : 0.0,
+                    gpsFound ? gps.satellites.value() : 0,
+                    gpsFound ? gps.time.value() : 0
+                );
+                file.close(); 
+            } else {
+                sdFound = false; // Mark for recovery if card is shaken loose
             }
         }
     }

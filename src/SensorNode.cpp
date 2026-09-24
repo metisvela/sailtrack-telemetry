@@ -82,6 +82,7 @@ void attemptModuleRecovery() {
 
 void setup() {
     Serial.begin(115200);
+    Serial2.setTxBufferSize(512);
     Serial2.begin(RADIO_BAUD, SERIAL_8N1, RXD2, TXD2);
     pinMode(LED_PIN, OUTPUT);
 
@@ -108,6 +109,7 @@ void setup() {
     cal.loadCalibration();
     filter.begin(10); // 10Hz filter
 
+    SerialGPS.setRxBufferSize(1024);
     SerialGPS.begin(GPS_BAUD, SERIAL_8N1, 4, 5);
 
     // SD Card Setup
@@ -147,26 +149,27 @@ void loop() {
     attemptModuleRecovery();
 
     // Process IMU
-    if (imuFound) {
+    // Process IMU strictly at 10Hz (every 100ms)
+    static unsigned long lastImuTime = 0;
+    if (imuFound && (millis() - lastImuTime >= 100)) {
+        lastImuTime = millis();
         sensors_event_t a, m, g, t;
         if (lsm.getEvent(&a, &m, &g, &t)) {
-            cal.calibrate(a); cal.calibrate(m); cal.calibrate(g); //added new
+            cal.calibrate(a); cal.calibrate(m); cal.calibrate(g); 
             filter.update(g.gyro.x * SENSORS_RADS_TO_DPS, g.gyro.y * SENSORS_RADS_TO_DPS, g.gyro.z * SENSORS_RADS_TO_DPS,
                           a.acceleration.x, a.acceleration.y, a.acceleration.z,
                           m.magnetic.x, m.magnetic.y, m.magnetic.z);
             filter.getLinearAcceleration(&linearAccelX, &linearAccelY, &linearAccelZ);
         } else {
-            imuFound = false; // Mark for recovery
+            imuFound = false; 
         }
     }
 
-    //  Process GPS
-    int maxChars = 100; 
-    while (SerialGPS.available() > 0 && maxChars > 0) {
+    // Process GPS: Read everything currently in the buffer (No maxChars limit)
+    while (SerialGPS.available() > 0) {
         if (gps.encode(SerialGPS.read())) {
             gpsFound = true;
         }
-        maxChars--;
     }
 
     // Send Data

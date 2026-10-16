@@ -11,6 +11,7 @@
 <img src="assets/dashboard-image.png" class="readme-header">
 
 ## Overview
+Information on this read me file are not correct. they are due corrections in regards to the upgrades on the system.
 
 SailTrack Telemetry is an onboard data tracking system built by the [Metis Sailing Team](http://metisvela.dii.unipd.it), a student project of the University of Padova. The system collects, displays, and transmits real-time performance metrics for racing sailboats.
 

@@ -11,7 +11,7 @@
 <img src="assets/dashboard-image.png" class="readme-header">
 
 ## Overview
-SailTrack Telemetry is an onboard data tracking system built by the [Metis Sailing Team](http://metisvela.dii.unipd.it), a student project of the University of Padova. The system collects, records, and transmits real-time performance metrics for racing sailboats.
+SailTrack Telemetry is an onboard data tracking system built by the [Metis Sailing Team](https://metisvela.it), a student project of the University of Padova. The system collects, records, and transmits real-time performance metrics for racing sailboats.
 
 The system is designed to:
 * Collect high-frequency data from onboard sensors. Including:
@@ -70,10 +70,11 @@ Local data is saved to SD card in standard CSV format:
 `TimeMs,Roll,Pitch,Yaw,AccX,AccY,AccZ,Lat,Lng,Knots,Course,Sats,GPSTime`
 
 Log files are created as `/temp_flight.csv` and automatically renamed to `/YYYYMMDD_HHMM.csv` once a GPS lock is achieved.
+
 --- 
 ## Contributing
 
-Contributors are welcome. If you are a student of the University of Padova, please apply for the Metis Sailing Team via our [official website](http://metisvela.dii.unipd.it), specifying in the application form that you are interested in contributing to the SailTrack Project. 
+Contributors are welcome. If you are a student of the University of Padova, please apply for the Metis Sailing Team via our [official website](https://metisvela.it), specifying in the application form that you are interested in contributing to the SailTrack Project. 
 
 If you are not a student of the University of Padova, feel free to open Pull Requests and Issues directly within this repository to contribute to the telemetry system development.
 

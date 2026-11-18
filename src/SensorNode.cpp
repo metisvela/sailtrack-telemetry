@@ -16,20 +16,20 @@ String logFileName = "/temp_flight.csv"; // Temporary name to catch early data
 bool isFileRenamed = false;              // Tracks if GPS has locked and renamed the file
 
 // --- E32 Radio Configuration ---
-#define RXD2 12
+#define RXD2 14
 #define TXD2 13
 #define RADIO_BAUD 9600
 
 // --- Configuration ---
 #define LED_PIN 2 
-#define I2C_SDA_PIN 27
+#define I2C_SDA_PIN 27 //IMU pins
 #define I2C_SCL_PIN 25
 #define GPS_BAUD 9600
 #define RECOVERY_INTERVAL 500 // 0.5 seconds
 
 // --- Global Objects ---
 TinyGPSPlus gps;
-HardwareSerial SerialGPS(1);
+HardwareSerial SerialGPS(2);
 Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
 Adafruit_NXPSensorFusion filter;
 Adafruit_Sensor_Calibration_EEPROM cal;
@@ -82,8 +82,8 @@ void attemptModuleRecovery() {
 
 void setup() {
     Serial.begin(115200);
-    Serial2.setTxBufferSize(512);
-    Serial2.begin(RADIO_BAUD, SERIAL_8N1, RXD2, TXD2);
+    Serial1.setTxBufferSize(512);
+    Serial1.begin(RADIO_BAUD, SERIAL_8N1, RXD2, TXD2);
     pinMode(LED_PIN, OUTPUT);
 
     // Classic Watchdog Setup (for recovery)
@@ -179,30 +179,30 @@ void loop() {
 
         if (imuFound) {
             // Replicates Send_CAN_IMU with 500us gaps
-            Serial2.printf("IMU_X,%.2f,%.2f\n", filter.getRoll(), linearAccelX);
+            Serial1.printf("IMU_X,%.2f,%.2f\n", filter.getRoll(), linearAccelX);
             Serial.printf("IMU_X,%.2f,%.2f\n", filter.getRoll(), linearAccelX);
             delayMicroseconds(500);
 
-            Serial2.printf("IMU_Y,%.2f,%.2f\n", filter.getPitch(), linearAccelY);
+            Serial1.printf("IMU_Y,%.2f,%.2f\n", filter.getPitch(), linearAccelY);
             Serial.printf("IMU_Y,%.2f,%.2f\n", filter.getPitch(), linearAccelY);
             delayMicroseconds(500);
 
-            Serial2.printf("IMU_Z,%.2f,%.2f\n", filter.getYaw(), linearAccelZ);
+            Serial1.printf("IMU_Z,%.2f,%.2f\n", filter.getYaw(), linearAccelZ);
             Serial.printf("IMU_Z,%.2f,%.2f\n", filter.getYaw(), linearAccelZ);
             delayMicroseconds(500);
         }
 
         if (gpsFound) {
             // Replicates Send_CAN_GPS with 500us gaps
-            Serial2.printf("GPS_POS,%.6f,%.6f\n", gps.location.lat(), gps.location.lng());
+            Serial1.printf("GPS_POS,%.6f,%.6f\n", gps.location.lat(), gps.location.lng());
             Serial.printf("GPS_POS,%.6f,%.6f\n", gps.location.lat(), gps.location.lng());
             delayMicroseconds(500);
 
-            Serial2.printf("GPS_MOT,%.2f,%.2f\n", gps.speed.knots(), gps.course.deg());
+            Serial1.printf("GPS_MOT,%.2f,%.2f\n", gps.speed.knots(), gps.course.deg());
             Serial.printf("GPS_MOT,%.2f,%.2f\n", gps.speed.knots(), gps.course.deg());
             delayMicroseconds(500);
 
-            Serial2.printf("GPS_INFO,%d,%d\n", gps.satellites.value(), gps.time.value());
+            Serial1.printf("GPS_INFO,%d,%d\n", gps.satellites.value(), gps.time.value());
             Serial.printf("GPS_INFO,%d,%d\n", gps.satellites.value(), gps.time.value());
         }
 

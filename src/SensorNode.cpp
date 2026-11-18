@@ -111,6 +111,14 @@ void setup() {
 
     SerialGPS.setRxBufferSize(1024);
     SerialGPS.begin(GPS_BAUD, SERIAL_8N1, 4, 5);
+    delay(250);
+
+    // Configure Adafruit Ultimate GPS (MTK3339 / PA1616S):
+    // 1. Output ONLY RMC (lat, lng, knots, course, date, time) and GGA (fix quality, satellites)
+    SerialGPS.print("$PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n");
+    delay(100);
+    // 2. Set update rate to 5 Hz (200 ms) so position/speed stay fresh between 1 Hz sends
+    SerialGPS.print("$PMTK220,200*2C\r\n");
 
     // SD Card Setup
     Serial.print("SD Card Init... ");

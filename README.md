@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/github/stars/metisvela/sailtrack-telemetry">
 </p>
 
-<img src="assets/dashboard-image.png" class="readme-header">
+<img src="assets/screenshot3.png" class="readme-header">
 
 ## Overview
 SailTrack Telemetry is an onboard data tracking system built by the [Metis Sailing Team](https://metisvela.it), a student project of the University of Padova. The system collects, records, and transmits real-time performance metrics for racing sailboats.

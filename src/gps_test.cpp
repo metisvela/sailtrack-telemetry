@@ -1,32 +1,18 @@
 #include <Arduino.h>
 
-// E32 Default Pins for ESP32
-#define RXD2 16
-#define TXD2 17
-
 void setup() {
-  // USB Debugging
   Serial.begin(115200);
-  
-  // LoRa Module (E32 default is 9600 baud)
-  Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
-
-  Serial.println("📡 Radio Test: Starting Broadcaster...");
+  // Exact same GPS port and pins as SensorNode.cpp
+  Serial2.setRxBufferSize(1024);
+  Serial2.begin(9600, SERIAL_8N1, 4, 5);
+  delay(250);
+  // Keep 1 Hz default rate and enable GSV so you can see SNR directly
+  Serial2.print("$PMTK220,1000*1F\r\n");
+  Serial2.print("$PMTK314,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0*29\r\n");
 }
 
 void loop() {
-  // Generate a random "Sensor" value
-  int fake_data = random(0, 100);
-  
-  // Create a simple string message
-  String msg = "BOAT_TEST,Value:" + String(fake_data) + "\n";
-
-  // Send to LoRa
-  Serial2.print(msg);
-
-  // Debug to USB
-  Serial.print("Sending to Shore: ");
-  Serial.print(msg);
-
-  delay(2000); // 2 second interval
+  while (Serial2.available()) {
+    Serial.write(Serial2.read());
+  }
 }
